@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.supabase_client import get_supabase
 import time
+import requests
 
 def login(email: str, senha: str) -> dict:
     supabase = get_supabase()
@@ -38,3 +39,26 @@ def verificar_permissao(perfis_permitidos: list):
 
 def usuario_logado() -> dict:
     return st.session_state.get("usuario", {})
+
+def criar_usuario_auth(email: str, senha: str, user_metadata: dict = None):
+    """
+    Cria um usuário no Supabase Auth usando a service_role key.
+    Retorna o usuário criado ou lança exceção.
+    """
+    url = f"{st.secrets['SUPABASE_URL']}/auth/v1/admin/users"
+    headers = {
+        "apikey": st.secrets["SUPABASE_KEY"],
+        "Authorization": f"Bearer {st.secrets['SUPABASE_SERVICE_KEY']}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "email": email,
+        "password": senha,
+        "email_confirm": True  # Auto-confirmar
+    }
+    if user_metadata:
+        data["user_metadata"] = user_metadata
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code != 200:
+        raise Exception(f"Erro ao criar usuário: {response.text}")
+    return response.json()
