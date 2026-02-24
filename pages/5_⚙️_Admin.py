@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.auth import verificar_permissao, usuario_logado
+from utils.auth import verificar_permissao, usuario_logado, criar_usuario_auth
 from utils.db_queries import listar_contratos, listar_paradas, listar_usuarios, criar_parada, atualizar_parada
 from utils.supabase_client import get_supabase
 from datetime import date
@@ -72,12 +72,39 @@ with tab2:
                 st.success("Atualizado!")
                 st.rerun()
 
-# ---------- Usuários (Auth) ----------
+# ---------- Usuários (criação completa) ----------
 with tab3:
-    st.subheader("Criar usuário no Auth")
-    st.markdown("Use o painel do Supabase para criar usuários. Após criar, associe o perfil na aba 'Perfis'.")
+    st.subheader("Criar Novo Usuário (Auth + Perfil)")
+    with st.form("novo_usuario"):
+        nome = st.text_input("Nome completo")
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        perfil = st.selectbox("Perfil", ['admin', 'pmo', 'setor', 'gestor'])
+        setor = st.text_input("Setor (apenas para perfil setor)")
+        if st.form_submit_button("Criar Usuário"):
+            if not nome or not email or not senha:
+                st.error("Preencha nome, e-mail e senha.")
+            else:
+                try:
+                    # 1. Criar no Auth
+                    user = criar_usuario_auth(email, senha, {"nome": nome})
+                    user_id = user['id']
+                    # 2. Inserir perfil
+                    dados_perfil = {
+                        "id": user_id,
+                        "nome": nome,
+                        "email": email,
+                        "perfil": perfil,
+                        "setor": setor if perfil == 'setor' else None,
+                        "ativo": True
+                    }
+                    supabase.table("perfis_usuarios").insert(dados_perfil).execute()
+                    st.success(f"Usuário {nome} criado com sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro: {e}")
 
-# ---------- Perfis ----------
+# ---------- Perfis (visualização e edição) ----------
 with tab4:
     st.subheader("Gerenciar Perfis de Usuários")
     perfis = listar_usuarios()
@@ -85,23 +112,23 @@ with tab4:
         df = pd.DataFrame(perfis)
         st.dataframe(df[['nome', 'email', 'perfil', 'setor', 'ativo']])
 
-    st.subheader("Associar Perfil a um usuário existente")
-    with st.form("novo_perfil"):
-        user_id = st.text_input("UUID do usuário (do Auth)")
-        nome = st.text_input("Nome")
-        email = st.text_input("E-mail")
-        perfil = st.selectbox("Perfil", ['admin', 'pmo', 'setor', 'gestor'])
-        setor = st.text_input("Setor (se for setor)")
-        ativo = st.checkbox("Ativo", value=True)
-        if st.form_submit_button("Salvar"):
-            dados = {
-                "id": user_id,
-                "nome": nome,
-                "email": email,
-                "perfil": perfil,
-                "setor": setor if perfil == 'setor' else None,
-                "ativo": ativo
-            }
-            supabase.table("perfis_usuarios").insert(dados).execute()
-            st.success("Perfil criado!")
-            st.rerun()
+        st.subheader("Editar Perfil")
+        user_selected = st.selectbox("Selecione o usuário", perfis, format_func=lambda u: u['nome'])
+        if user_selected:
+            with st.form("editar_perfil"):
+                novo_nome = st.text_input("Nome", value=user_selected['nome'])
+                novo_perfil = st.selectbox("Perfil", ['admin', 'pmo', 'setor', 'gestor'], index=['admin','pmo','setor','gestor'].index(user_selected['perfil']))
+                novo_setor = st.text_input("Setor", value=user_selected.get('setor', ''))
+                ativo = st.checkbox("Ativo", value=user_selected['ativo'])
+                if st.form_submit_button("Atualizar"):
+                    dados = {
+                        "nome": novo_nome,
+                        "perfil": novo_perfil,
+                        "setor": novo_setor if novo_perfil == 'setor' else None,
+                        "ativo": ativo
+                    }
+                    supabase.table("perfis_usuarios").update(dados).eq("id", user_selected['id']).execute()
+                    st.success("Perfil atualizado!")
+                    st.rerun()
+    else:
+        st.info("Nenhum perfil cadastrado.")
