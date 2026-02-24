@@ -8,7 +8,7 @@ verificar_permissao(["pmo", "admin"])
 
 st.markdown("<div class='page-header'><h1>🔬 Classificação GUT</h1></div>", unsafe_allow_html=True)
 
-paradas = listar_paradas({"status": "coleta"})  # Mostra todas em coleta, independente de aberta
+paradas = listar_paradas({"status": "coleta"})
 if not paradas:
     st.warning("Nenhum projeto em fase de coleta.")
     st.stop()
@@ -39,9 +39,9 @@ for occ in ocorrencias_nao_classificadas:
         st.write(f"**Lição:** {occ['licao_aprendida']}")
 
         with st.form(key=f"class_{occ['id']}"):
-            g = st.selectbox("Gravidade", [1,2,3,4,5], index=2, help=get_descricao_gravidade)
-            u = st.selectbox("Urgência", [1,2,3,4,5], index=2, help=get_descricao_urgencia)
-            t = st.selectbox("Tendência", [1,2,3,4,5], index=2, help=get_descricao_tendencia)
+            g = st.selectbox("Gravidade", [1,2,3,4,5], index=2, help=get_descricao_gravidade(g) if False else "Selecione a gravidade")
+            u = st.selectbox("Urgência", [1,2,3,4,5], index=2, help=get_descricao_urgencia(u) if False else "Selecione a urgência")
+            t = st.selectbox("Tendência", [1,2,3,4,5], index=2, help=get_descricao_tendencia(t) if False else "Selecione a tendência")
             gut = calcular_gut(g, u, t)
             st.markdown(f"**Resultado:** {gut['cor']} {gut['resultado']} - {gut['label']}")
 
@@ -61,7 +61,6 @@ for occ in ocorrencias_nao_classificadas:
                 )
 
             if st.form_submit_button("Salvar Classificação"):
-                # Salvar classificação
                 dados_class = {
                     "gravidade": g,
                     "urgencia": u,
@@ -82,7 +81,6 @@ for occ in ocorrencias_nao_classificadas:
                         "status": "pendente"
                     }
                     nova_acao = criar_acao(acao)
-                    # Notificar responsável
                     email_resp = next((u["email"] for u in usuarios if u["id"] == resp_id), None)
                     if email_resp:
                         notificar_responsavel_acao(
