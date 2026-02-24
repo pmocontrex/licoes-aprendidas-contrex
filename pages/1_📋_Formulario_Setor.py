@@ -33,7 +33,6 @@ def remover_linha(linha_id):
 
 with st.form("form_ocorrencias"):
     dados = []
-    remover_ids = []
     for linha in st.session_state.linhas:
         cols = st.columns([2,2,3,3,3,1])
         with cols[0]:
@@ -47,8 +46,11 @@ with st.form("form_ocorrencias"):
         with cols[4]:
             licao = st.text_area("Lição Aprendida", key=f"licao_{linha['id']}", height=80)
         with cols[5]:
-            if st.form_submit_button("🗑️", type="secondary"):
-                remover_ids.append(linha['id'])
+            # Usar st.form_submit_button com key única
+            remover = st.form_submit_button("🗑️", key=f"remover_{linha['id']}")
+            if remover:
+                remover_linha(linha['id'])
+                st.rerun()
         dados.append({
             "parada_id": parada["id"],
             "area_setor": area,
@@ -68,11 +70,6 @@ with st.form("form_ocorrencias"):
         adicionar_linha()
         st.rerun()
 
-    for rid in remover_ids:
-        remover_linha(rid)
-    if remover_ids:
-        st.rerun()
-
     if enviar:
         validos = [o for o in dados if o["area_setor"] and o["fase"] and o["ocorrencia"] and o["impacto"] and o["licao_aprendida"]]
         if not validos:
@@ -86,4 +83,4 @@ with st.form("form_ocorrencias"):
             notificar_pmo_nova_ocorrencia(emails_pmo, usuario_logado().get("setor", "Setor"), parada["contratos"]["codigo"])
             # Limpar linhas
             st.session_state.linhas = [{"id": 0}]
-            st.rerun()
+            st.rerun()rerun()
