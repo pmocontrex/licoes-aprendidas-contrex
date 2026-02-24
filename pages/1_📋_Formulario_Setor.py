@@ -1,3 +1,4 @@
+# pages/1_📋_Formulario_Setor.py
 import streamlit as st
 from utils.auth import verificar_permissao, usuario_logado
 from utils.db_queries import listar_paradas, inserir_ocorrencias, listar_usuarios
@@ -5,6 +6,7 @@ from utils.notifications import notificar_pmo_nova_ocorrencia
 
 verificar_permissao(["setor", "pmo", "admin"])
 
+st.set_page_config(layout="wide")
 st.markdown("<div class='page-header'><h1>📋 Formulário de Ocorrências</h1></div>", unsafe_allow_html=True)
 
 # Listar paradas com coleta aberta
@@ -25,7 +27,7 @@ if "linhas" not in st.session_state:
     st.session_state.linhas = [{"id": 0}]
 
 def adicionar_linha():
-    novo_id = max(l["id"] for l in st.session_state.linhas) + 1
+    novo_id = max([l["id"] for l in st.session_state.linhas]) + 1
     st.session_state.linhas.append({"id": novo_id})
 
 def remover_linha(linha_id):
@@ -33,6 +35,7 @@ def remover_linha(linha_id):
 
 with st.form("form_ocorrencias"):
     dados = []
+    remover_ids = []
     for linha in st.session_state.linhas:
         cols = st.columns([2,2,3,3,3,1])
         with cols[0]:
@@ -46,11 +49,8 @@ with st.form("form_ocorrencias"):
         with cols[4]:
             licao = st.text_area("Lição Aprendida", key=f"licao_{linha['id']}", height=80)
         with cols[5]:
-            # Usar st.form_submit_button com key única
-            remover = st.form_submit_button("🗑️", key=f"remover_{linha['id']}")
-            if remover:
-                remover_linha(linha['id'])
-                st.rerun()
+            if st.form_submit_button("🗑️", key=f"remove_{linha['id']}", type="secondary"):
+                remover_ids.append(linha['id'])
         dados.append({
             "parada_id": parada["id"],
             "area_setor": area,
@@ -70,6 +70,11 @@ with st.form("form_ocorrencias"):
         adicionar_linha()
         st.rerun()
 
+    for rid in remover_ids:
+        remover_linha(rid)
+    if remover_ids:
+        st.rerun()
+
     if enviar:
         validos = [o for o in dados if o["area_setor"] and o["fase"] and o["ocorrencia"] and o["impacto"] and o["licao_aprendida"]]
         if not validos:
@@ -77,10 +82,8 @@ with st.form("form_ocorrencias"):
         else:
             inseridas = inserir_ocorrencias(validos)
             st.success(f"{len(inseridas)} ocorrência(s) enviada(s)!")
-            # Notificar PMOs
             pmos = listar_usuarios(perfil="pmo")
             emails_pmo = [p["email"] for p in pmos if p.get("email")]
             notificar_pmo_nova_ocorrencia(emails_pmo, usuario_logado().get("setor", "Setor"), parada["contratos"]["codigo"])
-            # Limpar linhas
             st.session_state.linhas = [{"id": 0}]
-            st.rerun()rerun()
+            st.rerun()
