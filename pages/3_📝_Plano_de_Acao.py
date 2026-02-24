@@ -9,10 +9,8 @@ st.markdown("<div class='page-header'><h1>📝 Minhas Ações</h1></div>", unsaf
 
 usuario = usuario_logado()
 if usuario["perfil"] in ("pmo", "admin", "gestor"):
-    # PMO/admin/gestor veem todas as ações? Vamos deixar filtrar por responsável.
     acoes = listar_acoes()
 else:
-    # Setor vê apenas as ações onde é responsável
     acoes = listar_acoes({"responsavel_id": usuario["id"]})
 
 if not acoes:
@@ -23,7 +21,9 @@ for acao in acoes:
     with st.container():
         st.markdown(f"### {acao['descricao']}")
         cols = st.columns(4)
-        cols[0].write(f"**Projeto:** {acao['paradas']['contratos'][0]['codigo']}")
+        # Extrai o nome do projeto de forma segura
+        projeto = acao.get('paradas', {}).get('contratos', {}).get('codigo', 'N/A')
+        cols[0].write(f"**Projeto:** {projeto}")
         cols[1].write(f"**Prazo:** {acao['prazo']}")
         cols[2].write(f"**Status:** {acao['status']}")
         if acao['status'] == 'pendente':
